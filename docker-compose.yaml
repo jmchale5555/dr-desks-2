@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=django_db
+      - POSTGRES_USER=django_user
+      - POSTGRES_PASSWORD=django_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U django_user -d django_db"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    ports:
+      - "5432:5432"
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app:Z
+      - ./media:/app/media:Z
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=1
+      - DB_NAME=django_db
+      - DB_USER=django_user
+      - DB_PASSWORD=django_password
+      - DB_HOST=db
+      - DB_PORT=5432
+      - LDAP_ENCRYPTION_KEY=<redacted>
+    depends_on:
+      db:
+        condition: service_healthy
+
+  node:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    ports:
+      - "5173:5173"
+
+  nginx:
+    build: ./nginx
+    ports:
+      - "8080:80"
+    depends_on:
+      - web
+
+volumes:
+  postgres_data:
