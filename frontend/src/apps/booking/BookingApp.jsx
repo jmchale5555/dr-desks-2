@@ -346,12 +346,19 @@ export default function BookingApp() {
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Choose a desk...</option>
-                      {desks.map(desk => (
-                        <option key={desk.id} value={desk.id}>
-                          Desk {desk.desk_number}
-                          {desk.location_description && ` - ${desk.location_description}`}
-                        </option>
-                      ))}
+                      {desks.map(desk => {
+                        const deskLabel = `Desk ${desk.desk_number}`;
+                        const location = desk.location_description?.trim();
+                        const showLocation =
+                          location &&
+                          location.toLowerCase() !== deskLabel.toLowerCase();
+                        return (
+                          <option key={desk.id} value={desk.id}>
+                            {deskLabel}
+                            {showLocation && ` - ${location}`}
+                          </option>
+                        );
+                      })}
                     </select>
                   )}
                 </div>

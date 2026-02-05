@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from django.contrib.auth import get_user_model, authenticate
 from django.db.models import Q
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
 
 from .models import Booking, Desk, Room, LDAPSettings
 
@@ -107,10 +108,11 @@ class LoginSerializer(serializers.Serializer):
         )
         
         if not user:
-            raise serializers.ValidationError("Invalid credentials")
+            # Return 401 for bad username/password
+            raise AuthenticationFailed("Invalid username or password")
         
         if not user.is_active:
-            raise serializers.ValidationError("User account is disabled")
+            raise PermissionDenied("User account is disabled")
         
         data['user'] = user
         return data

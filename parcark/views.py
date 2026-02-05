@@ -66,14 +66,13 @@ def login_view(request):
     Body: {"username": "john", "password": "password123"}
     """
     serializer = LoginSerializer(data=request.data, context={'request': request})
-    if serializer.is_valid():
-        user = serializer.validated_data['user']
-        login(request, user)
-        return Response({
-            'message': 'Login successful',
-            'user': UserSerializer(user).data
-        })
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.is_valid(raise_exception=True)
+    user = serializer.validated_data['user']
+    login(request, user)
+    return Response({
+        'message': 'Login successful',
+        'user': UserSerializer(user).data
+    })
 
 
 @api_view(['POST'])
