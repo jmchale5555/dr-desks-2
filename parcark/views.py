@@ -9,7 +9,7 @@ from django.db.models.functions import ExtractWeekDay
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.pagination import PageNumberPagination
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from collections import defaultdict
 import os
 import logging
@@ -670,19 +670,37 @@ class AnalyticsViewSet(viewsets.ViewSet):
         Optional params: start_date, end_date
         """
         # Get date range from query params
-        start_date = request.query_params.get('start_date')
-        end_date = request.query_params.get('end_date')
-        
+        start_date_param = request.query_params.get('start_date')
+        end_date_param = request.query_params.get('end_date')
+
         # Default to last 30 days if not specified
-        if not start_date:
+        if not start_date_param:
             start_date = date.today() - timedelta(days=30)
         else:
-            start_date = datetime.strptime(end_date, '%Y-%m-%d').date()
- 
-        if not end_date:
+            try:
+                start_date = datetime.strptime(start_date_param, '%Y-%m-%d').date()
+            except ValueError:
+                return Response(
+                    {'error': 'Invalid start_date format. Use YYYY-MM-DD.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if not end_date_param:
             end_date = date.today() + timedelta(days=30)
         else:
-            end_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            try:
+                end_date = datetime.strptime(end_date_param, '%Y-%m-%d').date()
+            except ValueError:
+                return Response(
+                    {'error': 'Invalid end_date format. Use YYYY-MM-DD.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if start_date > end_date:
+            return Response(
+                {'error': 'start_date cannot be after end_date.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         
 
         # Filter bookings by date range
