@@ -28,7 +28,7 @@ Prerequisites:
 From the repo root:
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/jmchale5555/dr-desks-2
 cd dr-desk-2
 (sudo) docker compose up --build
 ```
