@@ -452,7 +452,7 @@ export default function BookingApp() {
             })
             .join('\n');
         
-          setActionError(`Some bookings failed:\n${errorMessages}`);
+          setActionError(`Booking failed:\n${errorMessages}`);
         }
     
       if (response.created.length > 0) {
