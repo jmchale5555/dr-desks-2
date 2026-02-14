@@ -50,11 +50,13 @@ export default function RoomBuilderApp() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   useEffect(() => {
     const loadRooms = async () => {
       setLoading(true);
       setError(null);
+      setSuccessMessage(null);
       try {
         const data = await roomService.getAllRooms();
         setRooms(data);
@@ -79,6 +81,7 @@ export default function RoomBuilderApp() {
 
     const loadLayout = async () => {
       setError(null);
+      setSuccessMessage(null);
       try {
         const data = await roomLayoutService.getRoomLayout(selectedRoomId);
         setLayout(data);
@@ -370,6 +373,7 @@ export default function RoomBuilderApp() {
   const handleGenerateFromDesks = async () => {
     if (!selectedRoomId) return;
     setError(null);
+    setSuccessMessage(null);
     try {
       const data = await roomLayoutService.generateFromDesks(selectedRoomId);
       setLayoutWithHistory(() => data);
@@ -383,6 +387,7 @@ export default function RoomBuilderApp() {
     if (!selectedRoomId || !layout) return;
     setSaving(true);
     setError(null);
+    setSuccessMessage(null);
     try {
       const payload = {
         room: Number(selectedRoomId),
@@ -393,6 +398,8 @@ export default function RoomBuilderApp() {
       };
       const saved = await roomLayoutService.updateRoomLayout(selectedRoomId, payload);
       setLayout(saved);
+      setSuccessMessage('Layout saved successfully!');
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
       setError(err.message || 'Failed to save layout');
     } finally {
@@ -419,7 +426,7 @@ export default function RoomBuilderApp() {
           <select
             value={selectedRoomId}
             onChange={(e) => setSelectedRoomId(e.target.value)}
-            className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+            className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
           >
             {rooms.map((room) => (
               <option key={room.id} value={room.id}>
@@ -433,6 +440,12 @@ export default function RoomBuilderApp() {
       {error && (
         <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-300">
           {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="rounded-md border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-3 text-sm text-green-700 dark:text-green-300">
+          {successMessage}
         </div>
       )}
 
