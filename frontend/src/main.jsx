@@ -13,6 +13,7 @@ import MyBookings from './apps/mybookings/MyBookings';
 import AdminApp from './apps/admin/AdminApp';
 import AnalyticsApp from './apps/analytics/AnalyticsApp';
 import SettingsApp from './apps/settings/SettingsApp';
+import RoomBuilderApp from './apps/roomBuilder/RoomBuilderApp';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>
@@ -42,6 +43,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="settings" element={
             <ProtectedRoute requireAdmin>
               <SettingsApp />
+            </ProtectedRoute>
+          } />
+          <Route path="room-builder" element={
+            <ProtectedRoute requireAdmin>
+              <RoomBuilderApp />
             </ProtectedRoute>
           } />
         </Route>

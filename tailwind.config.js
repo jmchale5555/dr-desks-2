@@ -2,8 +2,7 @@
 export default {
   content: [
     "./frontend/**/*.{js,jsx,ts,tsx}",
-    "./**/templates/**/*.html",
-    "./**/*.py",
+    "./parcark/templates/**/*.html",
   ],
   darkMode: 'class',
   theme: {

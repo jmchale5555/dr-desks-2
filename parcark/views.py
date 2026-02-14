@@ -3,6 +3,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.shortcuts import get_object_or_404
 from django.contrib.auth import login, logout, get_user_model
 from django.db.models import Q, Count
 from django.db.models.functions import ExtractWeekDay
@@ -13,9 +14,9 @@ from datetime import date, timedelta, datetime
 from collections import defaultdict
 import os
 import logging
-from .models import Room, Desk, Booking, LDAPSettings
+from .models import Room, Desk, Booking, RoomLayout, LDAPSettings
 from .serializers import (
-    UserSerializer, RegisterSerializer, LoginSerializer, RoomSerializer, DeskSerializer, BookingSerializer, LDAPSettingsSerializer,
+    UserSerializer, RegisterSerializer, LoginSerializer, RoomSerializer, DeskSerializer, BookingSerializer, RoomLayoutSerializer, LDAPSettingsSerializer,
 )
 from django.core.cache import cache
 
@@ -655,6 +656,99 @@ class LDAPSettingsViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
+
+
+class RoomLayoutViewSet(viewsets.ViewSet):
+    """Room Builder layout API contract (admin only)."""
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def _get_room(self, room_id):
+        return get_object_or_404(Room, pk=room_id)
+
+    def _get_or_create_layout(self, room):
+        layout, _ = RoomLayout.objects.get_or_create(room=room)
+        return layout
+
+    @action(detail=False, methods=['get', 'put'], url_path=r'(?P<room_id>[^/.]+)')
+    def by_room(self, request, room_id=None):
+        """
+        GET /api/room-layouts/{room_id}/
+        PUT /api/room-layouts/{room_id}/
+        """
+        room = self._get_room(room_id)
+        layout = self._get_or_create_layout(room)
+
+        if request.method == 'GET':
+            serializer = RoomLayoutSerializer(layout)
+            return Response(serializer.data)
+
+        serializer = RoomLayoutSerializer(layout, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(updated_by=request.user, room=room)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], url_path=r'(?P<room_id>[^/.]+)/autosave')
+    def autosave(self, request, room_id=None):
+        """
+        POST /api/room-layouts/{room_id}/autosave/
+        """
+        room = self._get_room(room_id)
+        layout = self._get_or_create_layout(room)
+
+        serializer = RoomLayoutSerializer(layout, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(updated_by=request.user, room=room)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], url_path=r'(?P<room_id>[^/.]+)/generate-from-desks')
+    def generate_from_desks(self, request, room_id=None):
+        """
+        POST /api/room-layouts/{room_id}/generate-from-desks/
+        """
+        room = self._get_room(room_id)
+        layout = self._get_or_create_layout(room)
+
+        objects = []
+        active_desks = room.desks.filter(is_active=True).order_by('desk_number')
+        cols = 6
+        spacing_x = 120
+        spacing_y = 90
+        start_x = 100
+        start_y = 100
+
+        for index, desk in enumerate(active_desks):
+            row = index // cols
+            col = index % cols
+            objects.append({
+                'id': f'desk_{desk.id}',
+                'type': 'desk',
+                'x': start_x + (col * spacing_x),
+                'y': start_y + (row * spacing_y),
+                'width': 80,
+                'height': 50,
+                'rotation': 0,
+                'locked': False,
+                'meta': {
+                    'deskId': desk.id,
+                    'deskNumber': desk.desk_number,
+                    'label': f'D{desk.desk_number}',
+                },
+            })
+
+        layout.layout_json = {
+            'schemaVersion': 1,
+            'grid': {
+                'enabled': True,
+                'size': 20,
+                'snap': True,
+            },
+            'objects': objects,
+        }
+        layout.updated_by = request.user
+        layout.save(update_fields=['layout_json', 'updated_by', 'updated_at'])
+
+        serializer = RoomLayoutSerializer(layout)
+        return Response(serializer.data)
 
 
 class AnalyticsViewSet(viewsets.ViewSet):

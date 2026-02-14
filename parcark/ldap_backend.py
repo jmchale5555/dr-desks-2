@@ -1,7 +1,7 @@
 import logging
 from django_auth_ldap.backend import LDAPBackend
 from django_auth_ldap.config import LDAPSettings, LDAPSearch
-from parcark.ldap_config import configure_ldap
+from parcark.ldap_config import configure_ldap, get_ldap_settings
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +14,9 @@ class DynamicLDAPBackend(LDAPBackend):
         
         # Get fresh LDAP settings from DB
         ldap_settings = configure_ldap()
+        if not ldap_settings:
+            logger.debug("LDAP disabled or not configured; skipping LDAP settings reload")
+            return False
         
         # Apply to Django settings object
         for key, value in ldap_settings.items():
@@ -30,14 +33,23 @@ class DynamicLDAPBackend(LDAPBackend):
             logger.error(f"USER_SEARCH is wrong type: {type(self.settings.USER_SEARCH)}")
         else:
             logger.debug(f"✓ USER_SEARCH is correct: {self.settings.USER_SEARCH}")
+
+        return True
     
     def authenticate(self, request, username=None, password=None, **kwargs):
         if not username or not password:
             return None
+
+        ldap_runtime = get_ldap_settings()
+        if not ldap_runtime.get('enabled', False):
+            logger.debug("LDAP disabled; skipping LDAP auth backend")
+            return None
         
         try:
             # Reload settings BEFORE each auth attempt
-            self._reload_settings()
+            loaded = self._reload_settings()
+            if not loaded:
+                return None
             
             # Now proceed with authentication
             return super().authenticate(request, username=username, password=password, **kwargs)

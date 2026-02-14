@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react-swc'
 export default defineConfig({
   plugins: [react()],
   root: './frontend',
+  cacheDir: '/tmp/vite-cache',
   base: process.env.NODE_ENV === 'production' ? '/static/' : '/',
   build: {
     outDir: '../static/dist',
@@ -17,7 +18,11 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
-    cors: true
+    cors: true,
+    watch: {
+      usePolling: true,
+      interval: 300,
+    },
   },
   test: {
     environment: 'jsdom',

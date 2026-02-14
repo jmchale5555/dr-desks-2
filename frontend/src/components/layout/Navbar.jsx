@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Calendar, LayoutDashboard, BarChart3, Settings, FileText, X } from 'lucide-react';
+import { Calendar, LayoutDashboard, BarChart3, Settings, FileText, DraftingCompass, X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 export default function Navbar({ isAdmin = false, isMobileMenuOpen, onMobileMenuClose }) {
@@ -45,6 +45,12 @@ export default function Navbar({ isAdmin = false, isMobileMenuOpen, onMobileMenu
       label: 'Settings',
       icon: Settings,
       show: isAdmin, // Only show if admin
+    },
+    {
+      path: '/room-builder',
+      label: 'Room Builder',
+      icon: DraftingCompass,
+      show: isAdmin,
     },
   ];
 

@@ -136,6 +136,43 @@ class Desk(models.Model):
     def __str__(self):
         return f"{self.room.name} - Desk {self.desk_number}"
 
+
+def default_room_layout_json():
+    return {
+        'schemaVersion': 1,
+        'grid': {
+            'enabled': True,
+            'size': 20,
+            'snap': True,
+        },
+        'objects': [],
+    }
+
+
+class RoomLayout(models.Model):
+    """Versioned room layout for the Room Builder editor."""
+    room = models.OneToOneField(Room, on_delete=models.CASCADE, related_name='layout')
+    version = models.PositiveIntegerField(default=1)
+    canvas_width = models.PositiveIntegerField(default=1200)
+    canvas_height = models.PositiveIntegerField(default=800)
+    layout_json = models.JSONField(default=default_room_layout_json)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='room_layout_updates',
+    )
+
+    class Meta:
+        verbose_name = 'Room Layout'
+        verbose_name_plural = 'Room Layouts'
+
+    def __str__(self):
+        return f"Layout for {self.room.name}"
+
 class Booking(models.Model):
     """Desk booking"""
     PERIOD_CHOICES = [

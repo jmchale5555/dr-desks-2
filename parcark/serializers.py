@@ -6,7 +6,7 @@ from django.db.models import Q
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
 
-from .models import Booking, Desk, Room, LDAPSettings
+from .models import Booking, Desk, Room, RoomLayout, LDAPSettings
 
 User = get_user_model()
 
@@ -314,4 +314,59 @@ class LDAPSettingsSerializer(serializers.ModelSerializer):
         """Never return password in API responses"""
         data = super().to_representation(instance)
         data.pop('bind_password', None)
+        return data
+
+
+class RoomLayoutSerializer(serializers.ModelSerializer):
+    room_name = serializers.CharField(source='room.name', read_only=True)
+    updated_by_username = serializers.ReadOnlyField(source='updated_by.username')
+
+    class Meta:
+        model = RoomLayout
+        fields = [
+            'id',
+            'room',
+            'room_name',
+            'version',
+            'canvas_width',
+            'canvas_height',
+            'layout_json',
+            'created_at',
+            'updated_at',
+            'updated_by',
+            'updated_by_username',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'updated_by', 'updated_by_username']
+
+    def validate_layout_json(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError('layout_json must be an object')
+
+        if 'schemaVersion' not in value:
+            raise serializers.ValidationError('layout_json must include schemaVersion')
+
+        if value.get('schemaVersion') != 1:
+            raise serializers.ValidationError('Only schemaVersion 1 is currently supported')
+
+        objects = value.get('objects', [])
+        if not isinstance(objects, list):
+            raise serializers.ValidationError('layout_json.objects must be an array')
+
+        for item in objects:
+            if not isinstance(item, dict):
+                raise serializers.ValidationError('Each object entry must be an object')
+            if 'id' not in item or 'type' not in item:
+                raise serializers.ValidationError('Each object must include id and type')
+
+        return value
+
+    def validate(self, data):
+        width = data.get('canvas_width', getattr(self.instance, 'canvas_width', 1200))
+        height = data.get('canvas_height', getattr(self.instance, 'canvas_height', 800))
+
+        if width < 200 or width > 5000:
+            raise serializers.ValidationError({'canvas_width': 'Canvas width must be between 200 and 5000'})
+        if height < 200 or height > 5000:
+            raise serializers.ValidationError({'canvas_height': 'Canvas height must be between 200 and 5000'})
+
         return data
