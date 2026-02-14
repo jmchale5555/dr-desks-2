@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Calendar, MapPin, Clock, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMyBookings } from '../../hooks/useMyBookings';
 
@@ -35,7 +36,49 @@ const isPast = (dateString) => {
   return date < today;
 };
 
+function CancelBookingModal({ booking, onConfirm, onClose, loading }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+            <Trash2 className="h-6 w-6 text-red-600 dark:text-red-400" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Cancel Booking?</h3>
+        </div>
+
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
+          Are you sure you want to cancel your booking for{' '}
+          <strong>{new Date(booking.date).toLocaleDateString()}</strong>{' '}
+          ({booking.period === 'am' ? 'Morning' : booking.period === 'pm' ? 'Afternoon' : 'Full Day'})?
+        </p>
+
+        <div className="flex items-center justify-end gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+          >
+            Keep Booking
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+          >
+            {loading ? 'Cancelling...' : 'Cancel Booking'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MyBookings() {
+  const [bookingToCancel, setBookingToCancel] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
+
   const {
     bookings,
     loading,
@@ -48,8 +91,24 @@ export default function MyBookings() {
     pageSize,
     goToPage,
     refresh,
-    cancelBooking,
+    cancelBooking: cancelBookingAction,
   } = useMyBookings(1, 10);
+
+  const handleConfirmCancel = async () => {
+    if (!bookingToCancel) return;
+
+    setCancelLoading(true);
+    setCancelError(null);
+    const result = await cancelBookingAction(bookingToCancel.id);
+    setCancelLoading(false);
+
+    if (result.success) {
+      setBookingToCancel(null);
+      return;
+    }
+
+    setCancelError(result.error || 'Failed to cancel booking');
+  };
 
   const getPeriodDisplay = (period) => {
     const periods = {
@@ -106,9 +165,9 @@ export default function MyBookings() {
         </button>
       </div>
 
-      {error && (
+      {(error || cancelError) && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-800 dark:text-red-400">{error}</p>
+          <p className="text-red-800 dark:text-red-400">{error || cancelError}</p>
         </div>
       )}
 
@@ -191,7 +250,10 @@ export default function MyBookings() {
                     <div className="flex sm:flex-col gap-2">
                       {!isPastBooking && (
                         <button
-                          onClick={() => handleCancelBooking(booking.id)}
+                          onClick={() => {
+                            setCancelError(null);
+                            setBookingToCancel(booking);
+                          }}
                           className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -269,6 +331,17 @@ export default function MyBookings() {
             </button>
           </div>
         </div>
+      )}
+
+      {bookingToCancel && (
+        <CancelBookingModal
+          booking={bookingToCancel}
+          onConfirm={handleConfirmCancel}
+          onClose={() => {
+            if (!cancelLoading) setBookingToCancel(null);
+          }}
+          loading={cancelLoading}
+        />
       )}
     </div>
   );

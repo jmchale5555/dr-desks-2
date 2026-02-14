@@ -21,6 +21,7 @@ export default function RoomLayoutViewer({
   selectedDeskId,
   interactive,
   onDeskSelect,
+  onDeskInspect,
   state,
   message,
 }) {
@@ -57,6 +58,7 @@ export default function RoomLayoutViewer({
                 const colors = STATUS_COLORS[deskStatus] || STATUS_COLORS.unknown;
                 const label = obj.meta?.label || `Desk ${obj.meta?.deskNumber || ''}`;
                 const canSelect = interactive && deskStatus === 'available' && obj.meta?.deskId;
+                const canInspect = !!obj.meta?.deskId;
 
                 return (
                   <Fragment key={obj.id}>
@@ -70,8 +72,22 @@ export default function RoomLayoutViewer({
                       stroke={isSelected ? '#2563eb' : colors.stroke}
                       strokeWidth={isSelected ? 3 : 2}
                       dash={deskStatus === 'inactive' ? [4, 3] : []}
-                      onClick={() => canSelect && onDeskSelect(String(obj.meta.deskId))}
-                      onTap={() => canSelect && onDeskSelect(String(obj.meta.deskId))}
+                      onClick={() => {
+                        if (canInspect) onDeskInspect(String(obj.meta.deskId));
+                        if (canSelect) {
+                          onDeskSelect(String(obj.meta.deskId));
+                        } else if (canInspect) {
+                          onDeskSelect('');
+                        }
+                      }}
+                      onTap={() => {
+                        if (canInspect) onDeskInspect(String(obj.meta.deskId));
+                        if (canSelect) {
+                          onDeskSelect(String(obj.meta.deskId));
+                        } else if (canInspect) {
+                          onDeskSelect('');
+                        }
+                      }}
                       opacity={deskStatus === 'inactive' ? 0.7 : 1}
                     />
                     <Text

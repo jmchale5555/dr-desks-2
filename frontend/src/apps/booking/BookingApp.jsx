@@ -110,6 +110,45 @@ const MAP_PERIODS = [
   { value: 'full', label: 'Full Day' },
 ];
 
+function bookingMatchesRequestedPeriod(bookingPeriod, requestedPeriod) {
+  if (requestedPeriod === 'full') {
+    return true;
+  }
+  return bookingPeriod === requestedPeriod || bookingPeriod === 'full';
+}
+
+function getDeskBookingDetails(bookings, requestedPeriod) {
+  if (!bookings || bookings.length === 0) {
+    return null;
+  }
+
+  const matching = bookings.filter((booking) =>
+    bookingMatchesRequestedPeriod(booking.period, requestedPeriod)
+  );
+
+  if (matching.length === 0) {
+    return null;
+  }
+
+  const mine = matching.find((booking) => booking.is_mine);
+  const chosen = mine || matching[0];
+
+  if (matching.length > 1) {
+    const distinctUsers = new Set(matching.map((booking) => booking.user_username));
+    if (distinctUsers.size > 1) {
+      return {
+        ...chosen,
+        multipleUsers: true,
+      };
+    }
+  }
+
+  return {
+    ...chosen,
+    multipleUsers: false,
+  };
+}
+
 // Main Booking App Component
 export default function BookingApp() {
   const { user } = useAuth();
@@ -135,8 +174,10 @@ export default function BookingApp() {
   const [mapState, setMapState] = useState('noRoomSelected');
   const [mapMessage, setMapMessage] = useState('Select a room to view layout');
   const [mapDate, setMapDate] = useState('');
-  const [mapPeriod, setMapPeriod] = useState('');
+  const [mapPeriod, setMapPeriod] = useState('full');
   const [deskStatusById, setDeskStatusById] = useState({});
+  const [deskBookingById, setDeskBookingById] = useState({});
+  const [inspectedDeskId, setInspectedDeskId] = useState('');
 
   const hasLayout = (() => {
     const objects = roomLayout?.layout_json?.objects || [];
@@ -146,6 +187,10 @@ export default function BookingApp() {
   const canSubmitBooking = hasLayout
     ? !!(selectedRoom && selectedDesk && mapDate && mapPeriod)
     : !!(selectedRoom && selectedDesk && selectedSlots.length === 1);
+
+  const activeDeskId = inspectedDeskId || selectedDesk;
+  const activeDesk = desks.find((desk) => String(desk.id) === String(activeDeskId));
+  const activeDeskBooking = activeDeskId ? deskBookingById[String(activeDeskId)] : null;
 
   const generateDates = () => {
     const dates = [];
@@ -162,8 +207,10 @@ export default function BookingApp() {
 
   useEffect(() => {
     setMapDate('');
-    setMapPeriod('');
+    setMapPeriod('full');
     setSelectedSlots([]);
+    setInspectedDeskId('');
+    setDeskBookingById({});
   }, [selectedRoom]);
 
   useEffect(() => {
@@ -171,6 +218,12 @@ export default function BookingApp() {
       setSelectedSlots([]);
     }
   }, [hasLayout]);
+
+  useEffect(() => {
+    if (selectedDesk) {
+      setInspectedDeskId(selectedDesk);
+    }
+  }, [selectedDesk]);
 
   useEffect(() => {
     let cancelled = false;
@@ -235,11 +288,14 @@ export default function BookingApp() {
 
       if (!mapDate || !mapPeriod) {
         const unknownStatuses = {};
+        const emptyBookingMap = {};
         desks.forEach((desk) => {
           unknownStatuses[getDeskStatusKeyFromDesk(desk)] = desk.is_active === false ? 'inactive' : 'unknown';
           unknownStatuses[`num:${desk.desk_number}`] = desk.is_active === false ? 'inactive' : 'unknown';
+          emptyBookingMap[String(desk.id)] = null;
         });
         setDeskStatusById(unknownStatuses);
+        setDeskBookingById(emptyBookingMap);
         setMapState('dateNotSelected');
         setMapMessage('Pick a date and period to check live desk availability.');
         return;
@@ -254,11 +310,16 @@ export default function BookingApp() {
 
         const availableIds = new Set((result?.desks || []).map((desk) => String(desk.id)));
         const statusMap = {};
+        const bookingMap = {};
+        const bookingsForDate = bookings.filter((booking) => booking.date === mapDate);
 
         desks.forEach((desk) => {
           const active = desk.is_active !== false;
           const keyById = getDeskStatusKeyFromDesk(desk);
           const keyByNum = `num:${desk.desk_number}`;
+          const deskBookings = bookingsForDate.filter((booking) => String(booking.desk) === String(desk.id));
+          const bookingDetails = getDeskBookingDetails(deskBookings, mapPeriod);
+          bookingMap[String(desk.id)] = bookingDetails;
 
           if (!active) {
             statusMap[keyById] = 'inactive';
@@ -272,6 +333,7 @@ export default function BookingApp() {
         });
 
         setDeskStatusById(statusMap);
+        setDeskBookingById(bookingMap);
 
         const selectedDeskStatus = selectedDesk ? statusMap[`id:${selectedDesk}`] : null;
         if (selectedDesk && selectedDeskStatus && selectedDeskStatus !== 'available') {
@@ -285,6 +347,7 @@ export default function BookingApp() {
         setMapMessage('Desk map is interactive. Click an available desk to select it.');
       } catch (err) {
         if (cancelled) return;
+        setDeskBookingById({});
         setMapState('availabilityError');
         setMapMessage('Could not load availability. Please try again.');
       }
@@ -295,7 +358,7 @@ export default function BookingApp() {
     return () => {
       cancelled = true;
     };
-  }, [selectedRoom, roomLayout, mapDate, mapPeriod, desks, selectedDesk, setSelectedDesk]);
+  }, [selectedRoom, roomLayout, mapDate, mapPeriod, desks, bookings, selectedDesk, setSelectedDesk]);
 
   const formatDate = (date) => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -570,6 +633,59 @@ export default function BookingApp() {
               </div>
             </div>
           </div>
+
+          {hasLayout && selectedRoom && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">
+                Desk Details
+              </h3>
+
+              {!activeDesk ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Click a desk in the map to view booking details.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Desk</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">Desk {activeDesk.desk_number}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Date / Period</p>
+                    <p className="text-sm text-gray-900 dark:text-white">
+                      {mapDate ? new Date(mapDate).toLocaleDateString() : 'Not selected'} / {mapPeriod ? mapPeriod.toUpperCase() : 'Not selected'}
+                    </p>
+                  </div>
+
+                  {activeDeskBooking ? (
+                    <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3">
+                      <p className="text-xs font-medium text-red-800 dark:text-red-300">
+                        {activeDeskBooking.is_mine
+                          ? 'Your booking'
+                          : activeDeskBooking.multipleUsers
+                            ? 'Booked by multiple users'
+                            : `Booked by ${activeDeskBooking.user_username}`}
+                      </p>
+                      {activeDeskBooking.is_mine && (
+                        <button
+                          type="button"
+                          onClick={() => setCancelBooking(activeDeskBooking)}
+                          className="mt-2 text-xs text-red-700 dark:text-red-300 underline hover:text-red-900 dark:hover:text-red-100"
+                        >
+                          Cancel booking
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-3">
+                      <p className="text-xs font-medium text-green-800 dark:text-green-300">Available</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="lg:col-span-3">
@@ -630,6 +746,7 @@ export default function BookingApp() {
                 selectedDeskId={selectedDesk}
                 interactive={mapState === 'availabilityReady' || mapState === 'selectionInvalidated'}
                 onDeskSelect={setSelectedDesk}
+                onDeskInspect={setInspectedDeskId}
                 state={mapState}
                 message={mapMessage}
               />
