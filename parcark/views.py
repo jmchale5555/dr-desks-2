@@ -662,6 +662,12 @@ class RoomLayoutViewSet(viewsets.ViewSet):
     """Room Builder layout API contract (admin only)."""
     permission_classes = [IsAuthenticated, IsAdminUser]
 
+    def get_permissions(self):
+        """Allow all authenticated users to read layouts, admin for writes."""
+        if self.request.method in permissions.SAFE_METHODS:
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsAdminUser()]
+
     def _get_room(self, room_id):
         return get_object_or_404(Room, pk=room_id)
 

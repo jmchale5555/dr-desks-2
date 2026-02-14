@@ -713,9 +713,10 @@ export default function BookingApp() {
                     <option value="">Choose date...</option>
                     {dates.map((date) => {
                       const dateStr = date.toISOString().split('T')[0];
+                      const dayName = date.toLocaleDateString(undefined, { weekday: 'long' });
                       return (
                         <option key={dateStr} value={dateStr}>
-                          {date.toLocaleDateString()}
+                          {date.toLocaleDateString()} - {dayName}
                         </option>
                       );
                     })}
