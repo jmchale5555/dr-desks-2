@@ -12,6 +12,8 @@ export default function ToolPanel({
   onAddObject,
   onDeleteSelected,
   onDuplicateSelected,
+  onScaleSelected,
+  onRotateSelected,
   onGenerateFromDesks,
   onSave,
   onUndo,
@@ -87,6 +89,32 @@ export default function ToolPanel({
         >
           Delete Selected
         </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => onScaleSelected(-10)}
+            disabled={!hasSelection}
+            className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50"
+          >
+            Scale -10%
+          </button>
+          <button
+            type="button"
+            onClick={() => onScaleSelected(10)}
+            disabled={!hasSelection}
+            className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50"
+          >
+            Scale +10%
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={onRotateSelected}
+          disabled={!hasSelection}
+          className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-50"
+        >
+          Rotate 90deg
+        </button>
         <button
           type="button"
           onClick={onGenerateFromDesks}
@@ -121,6 +149,8 @@ export default function ToolPanel({
             <p className="text-xs text-gray-600 dark:text-gray-400">Duplicate: Ctrl/Cmd+D</p>
             <p className="text-xs text-gray-600 dark:text-gray-400">Delete: Delete/Backspace</p>
             <p className="text-xs text-gray-600 dark:text-gray-400">Nudge: Arrows (Shift = 10px)</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Rotate: toolbar button (90deg)</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Scale: toolbar buttons (+/-10%)</p>
           </div>
         )}
       </div>

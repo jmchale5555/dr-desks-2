@@ -153,7 +153,7 @@ class RoomLayout(models.Model):
     """Versioned room layout for the Room Builder editor."""
     room = models.OneToOneField(Room, on_delete=models.CASCADE, related_name='layout')
     version = models.PositiveIntegerField(default=1)
-    canvas_width = models.PositiveIntegerField(default=1200)
+    canvas_width = models.PositiveIntegerField(default=800)
     canvas_height = models.PositiveIntegerField(default=800)
     layout_json = models.JSONField(default=default_room_layout_json)
     created_at = models.DateTimeField(auto_now_add=True)

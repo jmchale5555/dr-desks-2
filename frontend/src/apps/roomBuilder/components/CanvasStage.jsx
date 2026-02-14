@@ -10,7 +10,7 @@ function clamp(value, min, max) {
 
 export default function CanvasStage({ layout, selectedObjectId, onSelectObject, onUpdateObject }) {
   const objects = layout?.layout_json?.objects || [];
-  const canvasWidth = layout?.canvas_width || 1200;
+  const canvasWidth = layout?.canvas_width || 800;
   const canvasHeight = layout?.canvas_height || 800;
   const stageRef = useRef(null);
   const transformerRef = useRef(null);
@@ -148,10 +148,17 @@ export default function CanvasStage({ layout, selectedObjectId, onSelectObject, 
                     onTransformEnd={() => handleTransformEnd(obj)}
                   />
                   <Text
-                    x={obj.x + 6}
-                    y={obj.y + 6}
+                    x={obj.x + 4}
+                    y={obj.y + Math.max((obj.height - 12) / 2, 2)}
+                    width={Math.max(obj.width - 8, 8)}
+                    height={Math.max(obj.height - 4, 12)}
+                    rotation={obj.rotation || 0}
                     text={obj.meta?.label || obj.id}
                     fontSize={12}
+                    align="center"
+                    verticalAlign="middle"
+                    wrap="none"
+                    ellipsis
                     fill="#111827"
                     listening={false}
                   />

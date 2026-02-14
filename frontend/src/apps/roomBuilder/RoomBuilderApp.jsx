@@ -37,6 +37,8 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+const MIN_OBJECT_SIZE = 20;
+
 export default function RoomBuilderApp() {
   const HISTORY_LIMIT = 50;
   const [rooms, setRooms] = useState([]);
@@ -269,7 +271,7 @@ export default function RoomBuilderApp() {
     setLayoutWithHistory((prevLayout) => {
       if (!prevLayout) return prevLayout;
 
-      const maxWidth = prevLayout.canvas_width || 1200;
+      const maxWidth = prevLayout.canvas_width || 800;
       const maxHeight = prevLayout.canvas_height || 800;
 
       return {
@@ -287,6 +289,61 @@ export default function RoomBuilderApp() {
               x: clamp(Number(item.x || 0) + dx, 0, Math.max(maxWidth - width, 0)),
               y: clamp(Number(item.y || 0) + dy, 0, Math.max(maxHeight - height, 0)),
             };
+          }),
+        },
+      };
+    });
+  };
+
+  const handleScaleSelected = (deltaPercent) => {
+    if (!layout || !selectedObjectId) return;
+
+    const factor = (100 + deltaPercent) / 100;
+    if (factor <= 0) return;
+
+    setLayoutWithHistory((prevLayout) => {
+      if (!prevLayout) return prevLayout;
+
+      const maxWidth = prevLayout.canvas_width || 800;
+      const maxHeight = prevLayout.canvas_height || 800;
+
+      return {
+        ...prevLayout,
+        layout_json: {
+          ...prevLayout.layout_json,
+          objects: prevLayout.layout_json.objects.map((item) => {
+            if (item.id !== selectedObjectId) return item;
+
+            const nextWidth = Math.max(MIN_OBJECT_SIZE, Math.round(Number(item.width || 0) * factor));
+            const nextHeight = Math.max(MIN_OBJECT_SIZE, Math.round(Number(item.height || 0) * factor));
+
+            return {
+              ...item,
+              width: nextWidth,
+              height: nextHeight,
+              x: clamp(Number(item.x || 0), 0, Math.max(maxWidth - nextWidth, 0)),
+              y: clamp(Number(item.y || 0), 0, Math.max(maxHeight - nextHeight, 0)),
+            };
+          }),
+        },
+      };
+    });
+  };
+
+  const handleRotateSelected = () => {
+    if (!layout || !selectedObjectId) return;
+
+    setLayoutWithHistory((prevLayout) => {
+      if (!prevLayout) return prevLayout;
+
+      return {
+        ...prevLayout,
+        layout_json: {
+          ...prevLayout.layout_json,
+          objects: prevLayout.layout_json.objects.map((item) => {
+            if (item.id !== selectedObjectId) return item;
+            const rotation = ((Number(item.rotation || 0) + 90) % 360 + 360) % 360;
+            return { ...item, rotation };
           }),
         },
       };
@@ -391,6 +448,8 @@ export default function RoomBuilderApp() {
             onAddObject={handleAddObject}
             onDeleteSelected={handleDeleteSelected}
             onDuplicateSelected={handleDuplicateSelected}
+            onScaleSelected={handleScaleSelected}
+            onRotateSelected={handleRotateSelected}
             onGenerateFromDesks={handleGenerateFromDesks}
             onSave={handleSave}
             onUndo={handleUndo}
